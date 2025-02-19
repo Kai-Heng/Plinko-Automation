@@ -39,7 +39,7 @@ sudo python main.py
 1️⃣ **Login to Stake.us** [First-Time] (Manually).  
 2️⃣ **Press "Enter"** when logged in and on the Plinko page.  
 3️⃣ **Set a target balance** (Automation stops once reached).  
-4️⃣ **Use `p`** to **pause/resume** automation dynamically.  
+4️⃣ **Use `p` + `enter`** to **pause/resume** automation dynamically.  
 
 ---
 ## **🔑 Hotkeys**

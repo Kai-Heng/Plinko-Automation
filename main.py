@@ -15,6 +15,7 @@ import undetected_chromedriver as uc
 target_balance = None
 running = True  # Flag to control execution
 log_file = "plinko_log.csv"  # Log file to store bets
+has_cookies = False
 
 # Global flag for pause/resume
 paused = False
@@ -42,7 +43,7 @@ def update_target():
         else:
             try:
                 target_balance = float(user_input)
-                print(f"New target set: {target_balance}")
+                print(f"\nNew target set: {target_balance}")
             except ValueError:
                 print("Invalid input. Enter a valid number.")
 
@@ -80,19 +81,23 @@ def stake_plinko_automation(cookies_file):
                 cookies = pickle.load(f)
                 for cookie in cookies:
                     driver.add_cookie(cookie)
-            print("Cookies loaded successfully!")
+            global has_cookies
+            has_cookies = True
+            print("✅ Cookies loaded successfully!")
             print("\nEnter new target balance (or type 'stop' to exit): ")
 
             # Refresh to apply cookies
             driver.refresh()
             time.sleep(3)
         except Exception as e:
-            print("No saved cookies found or error loading:", e)
+            print("❌ No saved cookies found or error loading:", e)
 
+        
         # 3) Pause so you can log in.
         #    Once logged in and have the Plinko page ready, press Enter in your console:
-        input("Log in to your Stake account, navigate to Plinko. Then press Enter to continue...")
-        save_cookies(driver)
+        input("🔑 Log in to your Stake account, navigate to Plinko. Then press Enter to continue...")
+        if(has_cookies == False):
+            save_cookies(driver)
 
 
         # 5) Wait for the essential elements
@@ -112,7 +117,7 @@ def stake_plinko_automation(cookies_file):
         while running:
 
             if paused:
-                print("Automation is paused. Waiting to resume...")
+                print("⚠️ Automation is paused. Waiting to resume...")
                 time.sleep(1)
                 continue
 
@@ -126,11 +131,11 @@ def stake_plinko_automation(cookies_file):
             try:
                 balance = float(balance_text)
             except ValueError:
-                print(f"Couldn’t parse balance from '{balance_text}'. Exiting.")
+                print(f"❌ Couldn’t parse balance from '{balance_text}'. Exiting.")
                 break
             
             if balance >= target_balance:
-                print(f"Reached target balance: {target_balance}. Stopping...")
+                print(f"🚨 Reached target balance: {target_balance}. Stopping...")
                 break
 
             # 1% of current balance
@@ -164,7 +169,7 @@ def stake_plinko_automation(cookies_file):
             time.sleep(0.005)
 
     finally:
-        print("Automation finished. (Close the browser manually or uncomment the quit line below.)")
+        print("🔴 Automation finished. (Close the browser manually or uncomment the quit line below.)")
         # driver.quit()  # <--- Uncomment to auto-close browser at script end
 
 if __name__ == "__main__":
