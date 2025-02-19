@@ -1,3 +1,4 @@
+import datetime
 import time
 import threading
 import csv
@@ -15,10 +16,12 @@ import undetected_chromedriver as uc
 target_balance = None
 running = True  # Flag to control execution
 log_file = "plinko_log.csv"  # Log file to store bets
+log_multiplier = "plinko_multiplier_log.csv"
 has_cookies = False
 
 # Global flag for pause/resume
 paused = False
+
 
 def toggle_pause():
     """Toggle between pause and resume."""
@@ -52,6 +55,39 @@ def log_bet(count, bet_amount, balance):
     with open(log_file, "a", newline="") as file:
         writer = csv.writer(file)
         writer.writerow([count, bet_amount, balance])
+
+def log_loss(count, multiplier):
+    """Log the loss event with a timestamp."""
+    with open(log_multiplier, "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([count, multiplier])
+
+def track_losses(driver):
+    """Track and log occurrences of loss multipliers (e.g., 0.2×)."""
+    wait = WebDriverWait(driver, 8)
+    
+    multiplier_xpath = (By.XPATH, "//*[@id='main-content']/div[1]/div/div/div/div/div[1]/div[2]/div/div[2]/div/button")  # Modify if needed
+    
+    wait.until(EC.presence_of_element_located(multiplier_xpath))
+    cnt = 0
+
+    while True:
+        try:
+            # Find loss elements
+            multiplier_el = driver.find_element(*multiplier_xpath)
+
+            multiplier_text = multiplier_el.text.strip()
+
+            if multiplier_text:
+                cnt += 1
+                log_loss(cnt, multiplier_text)  # Save to CSV
+            else:
+                print("⚠️ No multiplier detected (button might be empty).")
+
+            time.sleep(1)  # Adjust frequency to reduce CPU usage
+
+        except Exception as e:
+            print(f"Loss tracking error: {e}")
 
 def save_cookies(driver, file_path="stake_cookies.pkl"):
     """Saves cookies after manual login."""
@@ -112,6 +148,9 @@ def stake_plinko_automation(cookies_file):
         wait.until(EC.visibility_of_element_located(wallet_sel))
         wait.until(EC.visibility_of_element_located(betinput_sel))
         wait.until(EC.element_to_be_clickable(playbtn_sel))
+
+        loss_thread = threading.Thread(target=track_losses, args=(driver,), daemon=True)
+        loss_thread.start()
 
         counter = 0
         while running:
@@ -176,6 +215,10 @@ if __name__ == "__main__":
     with open(log_file, "w", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(["Bet Number", "Bet Amount", "Wallet Balance"])  # CSV Header
+
+    with open(log_multiplier, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Bet Number", "Multiplier"])  # CSV Header
 
     # Start the target update thread
     target_thread = threading.Thread(target=update_target, daemon=True)
