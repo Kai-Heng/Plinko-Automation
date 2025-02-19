@@ -52,6 +52,12 @@ def log_bet(count, bet_amount, balance):
         writer = csv.writer(file)
         writer.writerow([count, bet_amount, balance])
 
+def save_cookies(driver, file_path="stake_cookies.pkl"):
+    """Saves cookies after manual login."""
+    with open(file_path, "wb") as f:
+        pickle.dump(driver.get_cookies(), f)
+    print("✅ Cookies saved successfully!")
+
 def stake_plinko_automation(cookies_file):
     # 1) Set up Selenium WebDriver
     options = uc.ChromeOptions()
@@ -82,9 +88,12 @@ def stake_plinko_automation(cookies_file):
             time.sleep(3)
         except Exception as e:
             print("No saved cookies found or error loading:", e)
+
         # 3) Pause so you can log in.
         #    Once logged in and have the Plinko page ready, press Enter in your console:
         input("Log in to your Stake account, navigate to Plinko. Then press Enter to continue...")
+        save_cookies(driver)
+
 
         # 5) Wait for the essential elements
         wait = WebDriverWait(driver, 20)

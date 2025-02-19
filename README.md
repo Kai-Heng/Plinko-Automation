@@ -1,8 +1,8 @@
 # Plinko-Automation
 
 ### **📌 Plinko Automation Bot**
-#### **Automated Plinko Betting Bot for Stake.com**
-This project automates betting on the Plinko game on Stake.com using **Selenium** with **Undetected ChromeDriver**, allowing for automated gameplay, dynamic bet adjustments, and session management via cookies.
+#### **Automated Plinko Betting Bot for Stake.us**
+This project automates betting on the Plinko game on Stake.us using **Selenium** with **Undetected ChromeDriver**, allowing for automated gameplay, dynamic bet adjustments, and session management via cookies.
 
 ---
 
@@ -34,8 +34,9 @@ sudo python main.py
 ```
 
 ---
+
 ### **3️⃣ How to Use**
-1️⃣ **Login to Stake.com** (Manually).  
+1️⃣ **Login to Stake.us** [First-Time] (Manually).  
 2️⃣ **Press "Enter"** when logged in and on the Plinko page.  
 3️⃣ **Set a target balance** (Automation stops once reached).  
 4️⃣ **Use `p`** to **pause/resume** automation dynamically.  
