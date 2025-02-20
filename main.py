@@ -23,6 +23,7 @@ has_cookies = False
 # Global flag for pause/resume
 paused = False
 bet_number = 0
+start_tracker = 'N'
 
 
 def toggle_pause():
@@ -67,6 +68,7 @@ def log_loss(count, multiplier):
 def track_losses(driver):
     """Track and log occurrences of loss multipliers (e.g., 0.2×)."""
     print("Loss Tracker ready")
+    global start_tracker
     start_tracker = input("Start [Y/N]: ")
 
     if(start_tracker == 'Y'):
@@ -120,7 +122,7 @@ def track_losses(driver):
                         log_loss(bet_number, multiplier_text)  # Save to CSV
 
                 # ✅ Short sleep to reduce CPU usage
-                time.sleep(0.01)  
+                time.sleep(0.15)  
 
             except Exception as e:
                 print(f"⚠️ Loss tracking error: {e}")
@@ -241,7 +243,11 @@ def stake_plinko_automation(cookies_file):
             log_bet(counter, bet_amount, balance)
 
             # Wait a bit so the site can update the new balance
-            time.sleep(1.5)
+            if(start_tracker == 'Y'):
+                time.sleep(1.5)
+
+            else:
+                time.sleep(0.005)
 
     finally:
         print("🔴 Automation finished. (Close the browser manually or uncomment the quit line below.)")
