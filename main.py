@@ -1,3 +1,4 @@
+from collections import deque
 import datetime
 import time
 import threading
@@ -21,6 +22,7 @@ has_cookies = False
 
 # Global flag for pause/resume
 paused = False
+bet_number = 0
 
 
 def toggle_pause():
@@ -64,30 +66,64 @@ def log_loss(count, multiplier):
 
 def track_losses(driver):
     """Track and log occurrences of loss multipliers (e.g., 0.2×)."""
-    wait = WebDriverWait(driver, 8)
-    
-    multiplier_xpath = (By.XPATH, "//*[@id='main-content']/div[1]/div/div/div/div/div[1]/div[2]/div/div[2]/div/button")  # Modify if needed
-    
-    wait.until(EC.presence_of_element_located(multiplier_xpath))
-    cnt = 0
+    print("Loss Tracker ready")
+    start_tracker = input("Start [Y/N]: ")
 
-    while True:
+    if(start_tracker == 'Y'):
+        wait = WebDriverWait(driver, 10)
+
+        # XPath for `data-last-bet` attribute
+        data_last_bet_xpath = (By.XPATH, "//div[@data-test='game-frame']")
+        
+        # XPath for latest multiplier (button[1])
+        latest_multiplier_xpath = (By.XPATH, "//*[@id='main-content']/div[1]/div/div/div/div/div[1]/div[2]/div/div[2]/div/button[1]")
+
+        # Wait for Xpath to update
+        # wait.until(EC.presence_of_element_located(data_last_bet_xpath))
+        # wait.until(EC.visibility_of_element_located(latest_multiplier_xpath))
+        # Wait until data-last-bet appears
         try:
-            # Find loss elements
-            multiplier_el = driver.find_element(*multiplier_xpath)
+            data_last_bet_element = wait.until(EC.presence_of_element_located(data_last_bet_xpath))
+        except:
+            print("❌ Error: Could not find `data-last-bet` element.")
+            return
 
-            multiplier_text = multiplier_el.text.strip()
+        global bet_number  # Track bet count
 
-            if multiplier_text:
-                cnt += 1
-                log_loss(cnt, multiplier_text)  # Save to CSV
-            else:
-                print("⚠️ No multiplier detected (button might be empty).")
+        last_bet_id = data_last_bet_element.get_attribute("data-last-bet")  # Store initial ID
+        multiplier_element = driver.find_element(*latest_multiplier_xpath)
+        multiplier_text = multiplier_element.text.strip()
 
-            time.sleep(1)  # Adjust frequency to reduce CPU usage
+        if multiplier_text:
+            # print(f"🎯 New Bet Detected! Multiplier: {multiplier_text} for Bet {bet_number}")
+            log_loss(bet_number, multiplier_text)  # Save to CSV
 
-        except Exception as e:
-            print(f"Loss tracking error: {e}")
+        
+
+        while True:
+            try:
+                # Get current `data-last-bet` value
+                bet_container = driver.find_element(*data_last_bet_xpath)
+                current_bet_id = bet_container.get_attribute("data-last-bet")
+
+                # Check if `data-last-bet` has changed
+                if current_bet_id and current_bet_id != last_bet_id:
+                    last_bet_id = current_bet_id  # Update last seen bet ID
+                    bet_number += 1  # Increase bet count
+
+                    
+                    multiplier_element = driver.find_element(*latest_multiplier_xpath)
+                    multiplier_text = multiplier_element.text.strip()
+
+                    if multiplier_text:
+                        # print(f"🎯 New Bet Detected! Multiplier: {multiplier_text} for Bet {bet_number}")
+                        log_loss(bet_number, multiplier_text)  # Save to CSV
+
+                # ✅ Short sleep to reduce CPU usage
+                time.sleep(0.01)  
+
+            except Exception as e:
+                print(f"⚠️ Loss tracking error: {e}")
 
 def save_cookies(driver, file_path="stake_cookies.pkl"):
     """Saves cookies after manual login."""
@@ -136,6 +172,9 @@ def stake_plinko_automation(cookies_file):
             save_cookies(driver)
 
 
+        loss_thread = threading.Thread(target=track_losses, args=(driver,), daemon=True)
+        loss_thread.start()
+
         # 5) Wait for the essential elements
         wait = WebDriverWait(driver, 20)
 
@@ -148,9 +187,6 @@ def stake_plinko_automation(cookies_file):
         wait.until(EC.visibility_of_element_located(wallet_sel))
         wait.until(EC.visibility_of_element_located(betinput_sel))
         wait.until(EC.element_to_be_clickable(playbtn_sel))
-
-        loss_thread = threading.Thread(target=track_losses, args=(driver,), daemon=True)
-        loss_thread.start()
 
         counter = 0
         while running:
@@ -178,10 +214,10 @@ def stake_plinko_automation(cookies_file):
                 break
 
             # 1% of current balance
-            bet_amount = balance * 0.001
+            bet_amount = balance * 0.0001
 
-            if (counter % 5 == 0):
-                bet_amount = balance * 0.01
+            # if (counter % 5 == 0):
+            #     bet_amount = balance * 0.01
 
             if(bet_amount < 0.01):
                 bet_amount = 0.01
@@ -205,11 +241,17 @@ def stake_plinko_automation(cookies_file):
             log_bet(counter, bet_amount, balance)
 
             # Wait a bit so the site can update the new balance
-            time.sleep(0.005)
+            time.sleep(1.5)
 
     finally:
         print("🔴 Automation finished. (Close the browser manually or uncomment the quit line below.)")
-        # driver.quit()  # <--- Uncomment to auto-close browser at script end
+        i = 10
+        while i != 0:
+            print(f"Closing browser in {i}")
+            i -= 1
+            time.sleep(1)
+
+        driver.quit()  # <--- Uncomment to auto-close browser at script end
 
 if __name__ == "__main__":
     with open(log_file, "w", newline="") as file:
