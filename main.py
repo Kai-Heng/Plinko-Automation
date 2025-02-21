@@ -24,6 +24,8 @@ has_cookies = False
 paused = False
 bet_number = 0
 start_tracker = 'N'
+last_multiplier = ''
+approved = True
 
 
 def toggle_pause():
@@ -91,6 +93,8 @@ def track_losses(driver):
             return
 
         global bet_number  # Track bet count
+        global last_multiplier
+        global approved
 
         last_bet_id = data_last_bet_element.get_attribute("data-last-bet")  # Store initial ID
         multiplier_element = driver.find_element(*latest_multiplier_xpath)
@@ -98,6 +102,7 @@ def track_losses(driver):
 
         if multiplier_text:
             # print(f"🎯 New Bet Detected! Multiplier: {multiplier_text} for Bet {bet_number}")
+            last_multiplier = multiplier_text
             log_loss(bet_number, multiplier_text)  # Save to CSV
 
         
@@ -112,6 +117,7 @@ def track_losses(driver):
                 if current_bet_id and current_bet_id != last_bet_id:
                     last_bet_id = current_bet_id  # Update last seen bet ID
                     bet_number += 1  # Increase bet count
+                    approved = True
 
                     
                     multiplier_element = driver.find_element(*latest_multiplier_xpath)
@@ -119,6 +125,7 @@ def track_losses(driver):
 
                     if multiplier_text:
                         # print(f"🎯 New Bet Detected! Multiplier: {multiplier_text} for Bet {bet_number}")
+                        last_multiplier = multiplier_text
                         log_loss(bet_number, multiplier_text)  # Save to CSV
 
                 # ✅ Short sleep to reduce CPU usage
@@ -190,7 +197,13 @@ def stake_plinko_automation(cookies_file):
         wait.until(EC.visibility_of_element_located(betinput_sel))
         wait.until(EC.element_to_be_clickable(playbtn_sel))
 
+        global approved
         counter = 0
+        consecutive_losses = 0
+        loss_streak_threshold = 7  # Adjust if needed
+        previous_fib = 0
+        current_fib = 0.001
+
         while running:
 
             if paused:
@@ -215,36 +228,57 @@ def stake_plinko_automation(cookies_file):
                 print(f"🚨 Reached target balance: {target_balance}. Stopping...")
                 break
 
-            # 1% of current balance
-            bet_amount = balance * 0.0001
+            if approved:
+                # **Betting Strategy Logic**
+                if consecutive_losses >= loss_streak_threshold:
+                    bet_amount = balance * (previous_fib + current_fib)  # Increase bet slightly on long loss streaks
+                    temp_fib = current_fib
+                    current_fib = temp_fib + previous_fib
+                    previous_fib = temp_fib
+                    
+                else:
+                    bet_amount = balance * 0.0001  # Default small bet for safety
 
-            # if (counter % 5 == 0):
-            #     bet_amount = balance * 0.01
+                # if (counter % 5 == 0):
+                #     bet_amount = balance * 0.01
 
-            if(bet_amount < 0.01):
-                bet_amount = 0.01
+                if(bet_amount < 0.01):
+                    bet_amount = 0.01
 
-            
-            bet_input = driver.find_element(*betinput_sel)
-            play_btn  = driver.find_element(*playbtn_sel)
+                elif (bet_amount/balance * 100) >= 50:
+                    bet_amount = balance/2
 
-            # Clear input, enter new bet
-            bet_input.clear()
-            bet_input.send_keys(str(bet_amount))
+                
+                bet_input = driver.find_element(*betinput_sel)
+                play_btn  = driver.find_element(*playbtn_sel)
 
-            wait.until(lambda driver: driver.find_element(*playbtn_sel).is_enabled())
+                # Clear input, enter new bet
+                bet_input.clear()
+                bet_input.send_keys(str(bet_amount))
 
-            # Click Play
-            play_btn.click()
+                wait.until(lambda driver: driver.find_element(*playbtn_sel).is_enabled())
 
-            counter += 1
-            print(f"{counter}. [AutoBet] Placed bet = {bet_amount:.2f} | Current wallet approx: {balance}")
-            
-            log_bet(counter, bet_amount, balance)
+                # Click Play
+
+                play_btn.click()
+                approved = False
+
+                counter += 1
+                print(f"{counter}. [AutoBet] Placed bet = {bet_amount:.2f} | Current wallet approx: {balance}")
+                
+                log_bet(counter, bet_amount, balance)
+
+                # Track loss streaks based on previous recorded results
+                if last_multiplier == "0.2×" or last_multiplier == "0.3x" or last_multiplier == "0.5x":  # Loss multiplier
+                    consecutive_losses += 1
+                else:
+                    consecutive_losses = 0  # Reset loss count on a win
+                    previous_fib = 0
+                    current_fib = 0.001
 
             # Wait a bit so the site can update the new balance
             if(start_tracker == 'Y'):
-                time.sleep(1.5)
+                time.sleep(1)
 
             else:
                 time.sleep(0.005)
