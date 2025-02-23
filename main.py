@@ -26,6 +26,9 @@ bet_number = 0
 start_tracker = 'N'
 last_multiplier = ''
 approved = True
+consecutive_losses = 0
+previous_fib = 0
+current_fib = 0.001
 
 
 def toggle_pause():
@@ -126,6 +129,7 @@ def track_losses(driver):
                     if multiplier_text:
                         # print(f"🎯 New Bet Detected! Multiplier: {multiplier_text} for Bet {bet_number}")
                         last_multiplier = multiplier_text
+                        print(f"Winning Multiplier {last_multiplier}")
                         log_loss(bet_number, multiplier_text)  # Save to CSV
 
                 # ✅ Short sleep to reduce CPU usage
@@ -198,11 +202,13 @@ def stake_plinko_automation(cookies_file):
         wait.until(EC.element_to_be_clickable(playbtn_sel))
 
         global approved
+        global consecutive_losses
+        global previous_fib
+        global current_fib
         counter = 0
-        consecutive_losses = 0
+
         loss_streak_threshold = 7  # Adjust if needed
-        previous_fib = 0
-        current_fib = 0.001
+
 
         while running:
 
@@ -229,6 +235,16 @@ def stake_plinko_automation(cookies_file):
                 break
 
             if approved:
+
+                # Track loss streaks based on previous recorded results
+                if last_multiplier == "0.2×" or last_multiplier == "0.3x" or last_multiplier == "0.5x":  # Loss multiplier
+                    consecutive_losses += 1
+                else:
+                    consecutive_losses = 0  # Reset loss count on a win
+                    previous_fib = 0
+                    current_fib = 0.001
+
+                    
                 # **Betting Strategy Logic**
                 if consecutive_losses >= loss_streak_threshold:
                     bet_amount = balance * (previous_fib + current_fib)  # Increase bet slightly on long loss streaks
@@ -268,13 +284,7 @@ def stake_plinko_automation(cookies_file):
                 
                 log_bet(counter, bet_amount, balance)
 
-                # Track loss streaks based on previous recorded results
-                if last_multiplier == "0.2×" or last_multiplier == "0.3x" or last_multiplier == "0.5x":  # Loss multiplier
-                    consecutive_losses += 1
-                else:
-                    consecutive_losses = 0  # Reset loss count on a win
-                    previous_fib = 0
-                    current_fib = 0.001
+                
 
             # Wait a bit so the site can update the new balance
             if(start_tracker == 'Y'):
